@@ -1,0 +1,20 @@
+# OS files
+.DS_Store
+
+# Data
+data-raw/*
+!data-raw/README.md
+data/*
+!data/README.md
+
+# Resources
+resources
+
+# Explore
+explore
+
+# Outputs
+outputs/**/*.rds
+outputs/**/*.csv
+outputs/**/*.html
+outputs/**/*.pdf
