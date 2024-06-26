@@ -1,0 +1,290 @@
+---
+title: "Simulations investigating saturation point given a mutually exclusive multinomial response"
+date: "`r Sys.Date()`"
+author: "D. Erik Boonstra, MS and Joseph E. Cavanaugh, PhD"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+---
+
+```{r, include = FALSE, results = FALSE, message = FALSE}
+R <- list.files(path = "./R", pattern = "*.R", full.names = TRUE)
+sapply(R, source, .GlobalEnv)
+knitr::opts_chunk$set(
+  echo = FALSE,
+  out.width = "100%",
+  fig.align = "center",
+  warning = FALSE,
+  comment = NA
+)
+```
+
+# Purpose
+Explore the simulation results for saturation point analysis given a mutually exclusive multinomial response.
+
+# Simulation settings
+```{r}
+sub_dir <- "./outputs/mutually-exclusive-simulation/"
+load(file = paste0(sub_dir, "mutually_exclusive_simulation.rda"))
+```
+These simulations will explore multiple scenarios that could occur during the data collection process. These scenarios will focus on a single question in each survey that could have `r length(prob1)` possible responses choosen.
+
+There are three settings to investigate in these simulations.
+
+1. We achieve saturation with our first collection of data.
+2. We need a second collection of data to achieve saturation; however, there **IS NO** response bias. Thus, the collected data can be seen as one data collection mechanism.
+3. We need a second collection of data to achieve saturation; however, response bias **IS PRESENT**. Thus, the calculation of standard errors must account for the different data collections.
+
+In all three simulations, the total sample size is `r size1 + size1`, however, for the second and third simulations, the first and second *waves* of data collection had `r size1` and `r size2` responses collected, respectively.
+
+With a multinomial response, there were `r length(prob1)` probabilities that are needed to be specified to simulate our data. These probabilities will be listed below for each of the simulation settings.
+
+1. The generating probabilities for each response category were `r prob1`.
+2. The first and second wave of data collection are meant to show **NO** response bias. So, the generating probabilities for first and second wave of data are `r prob1` and `r prob2`, respectively.
+3. Considering this simulation setting is wanting to investigate the impact of response bias, the generating probabilities for the first and second wave of data are `r prob1` and `r prob2_rb`, respectively.
+
+# Calculating the standard errors
+To determine the saturation point of survey questions, we have decided to focus on standard errors of our responses. More specifically, once the standard errors of the responses have met a certain threshold, we will no longer need to collect any more data for that survey question, as saturation has been achieved.
+
+Considering we have multinomial responses in these simulations, the standard errors are a by-product of the sample proportions that a certain response is selected. Suppose $N$ is the sample size of the responses $\mathbf{Y}$ collected for a question of a survey, where there are $J =$  `r length(prob1)` possible responses to select. Thus, the sample proportion for a selected response $j$ is
+
+$$
+\hat{p}_{j} = \frac{\sum_{i = 1}^{N}\mathbb{1}\left(Y_{i} = j\right)}{N},
+$$
+
+where $Y_{i}$ takes values of $1, \ldots , J =$ `r length(prob1)`.
+
+Thus, leading to the standard errors of the $\hat{p}_{j}$ being
+
+$$
+SE\left(\hat{p}_{j}\right) = \sqrt{\frac{\hat{p}_{j}(1 - \hat{p}_{j})}{N}}.
+$$
+
+## Adjusting for response bias
+The presence of response bias can be identified by performing a Person $\chi^{2}$ test for independence among to the two data collections, and should be performed before combining the data collection.
+
+In third simulation scenario, response bias is present and seen in the test for independence. Thus, this must be accounted for when calculating the sample proportions and standard errors of the responses. Suppose $N_{1}$ and $N_{2}$ are the sample sizes for the first and second waves of responses $\mathbf{Y}_{1}$ and $\mathbf{Y}_{2}$ for a question of a survey, where there are $J$ possible responses in $\mathbf{Y}_{1}$ and $\mathbf{Y}_{2}$. Then, the sample proportion that any $j$ response is selected for each wave is
+
+$$
+\begin{aligned}
+\hat{p}_{1j} &= \frac{\sum_{k = 1}^{N_{1}}\mathbb{1}\left(Y_{1k} = j\right)}{N_{1}} \\
+\hat{p}_{2j}&= \frac{\sum_{k = 1}^{N_{2}}\mathbb{1}\left(Y_{2k} = j\right)}{N_{2}}
+\end{aligned}
+$$
+
+This gives us standard errors of 
+
+$$
+\begin{aligned}
+SE\left(\hat{p}_{1j}\right) &= \sqrt{\frac{\hat{p}_{1j}(1 - \hat{p}_{1j})}{N_{1}}} \\
+SE\left(\hat{p}_{2j}\right) &= \sqrt{\frac{\hat{p}_{2j}(1 - \hat{p}_{2j})}{N_{2}}}
+\end{aligned}
+$$
+
+for each sample proportion.
+
+Now let $w_{1} = N_{1} / (N_{1} + N_{2})$ and $w_{2} = N_{2} / (N_{1} + N_{2})$. We adjust for the response bias by the calculating weighted standard error for the weighted sample proportion. The weighted sample proportion is functionally the same as calculating $\hat{p}_{j}$ assuming $N = N_{1} + N_{2}$, which is how the sample proportions are calculated when response bias is **NOT** controlled for.
+
+$$
+\begin{aligned}
+\hat{p}_{j} &= w_{1}\hat{p}_{1j} + w_{2}\hat{p}_{2j} \\
+&= \frac{\sum_{k = 1}^{N_{1}}\mathbb{1}\left(Y_{1k} = j\right) + \sum_{\ell = 1}^{N_{2}}\mathbb{1}\left(Y_{2\ell} = j\right)}{N_{1} + N_{2}} \\
+&= \frac{\sum_{k = 1}^{N_{1}}\mathbb{1}\left(Y_{1k} = j\right) + \sum_{\ell = 1}^{N_{2}}\mathbb{1}\left(Y_{2\ell} = j\right)}{N}
+\end{aligned}
+$$
+
+The weighted standard error does not reduce to the standard error of $\hat{p}_{j}$ if $N = N_{1} + N_{2}$ and has the following functional form.
+
+$$
+\begin{aligned}
+SE\left(\hat{p}_{j}\right) &= \sqrt{w_{1}^{2}SE\left(\hat{p}_{1j}\right)^{2} + w_{2}^{2}SE\left(\hat{p}_{2j}\right)^{2}} \\
+&= \sqrt{\frac{N_{1}\hat{p}_{1j}\left(1 - \hat{p}_{1j}\right) + N_{2}\hat{p}_{2j}\left(1 - \hat{p}_{2j}\right)}{(N_{1} + N_{2})^{2}}}
+\end{aligned}
+$$
+
+# Simulation results
+
+## Simulation setting: 1
+In this simulation, we achieve saturation with our first collection of data, which is based on a sample size of `r nrow(sim1$data)` and generating probabilities of `r prob1` for our `r length(prob1)` response categories.
+
+```{r}
+tab <- matrix(
+  data = round(c(sim1$counts, sim1$p_hat, sim1$se), digits = 3),
+  nrow = 3, ncol = nrow(sim1$counts), byrow = TRUE,
+  dimnames = list(
+    c("Counts", "$\\hat{p}$", "$SE(\\hat{p})$"),
+    paste0("Response category ", seq_len(nrow(sim1$counts)))
+  )
+)
+tab <- knitr::kable(
+  x = tab, format = "html", digits = 3,
+  row.names = TRUE
+)
+kableExtra::kable_styling(kable_input = tab, full_width = FALSE)
+```
+
+Thus, if the threshold for saturation is set to 0.05 for the first data collection, we would have achieved saturation.
+
+## Simulation setting: 2
+In this simulation, we need a second collection of data to achieve saturation. As an example, suppose the threshold for the standard errors is set to 0.05, and the first and second waves of data collection resulted in an average standard error above 0.05, individually. However, there **IS NO** response bias. Thus, the collected data can be seen as one data collection mechanism. With the first and second wave of data collection showing **NO** response bias, the generating probabilities for first and second wave of data are `r prob1` and `r prob2`, respectively, with a total sample size of `r size1 + size2`.
+
+### Data collection wave: 1 (N = `r size1`)
+```{r}
+tab <- matrix(
+  data = round(
+    c(sim2_wave1$counts, sim2_wave1$p_hat, sim2_wave1$se),
+    digits = 3
+  ),
+  nrow = 3, ncol = nrow(sim2_wave1$counts), byrow = TRUE,
+  dimnames = list(
+    c("Counts", "$\\hat{p}$", "$SE(\\hat{p})$"),
+    paste0("Response category ", seq_len(nrow(sim2_wave1$counts)))
+  )
+)
+tab <- knitr::kable(
+  x = tab, format = "html", digits = 3,
+  row.names = TRUE
+)
+kableExtra::kable_styling(kable_input = tab, full_width = FALSE)
+```
+
+### Data collection wave: 2 (N = `r size2`)
+```{r}
+tab <- matrix(
+  data = round(
+    c(sim2_wave2$counts, sim2_wave2$p_hat, sim2_wave2$se),
+    digits = 3
+  ),
+  nrow = 3, ncol = nrow(sim2_wave2$counts), byrow = TRUE,
+  dimnames = list(
+    c("Counts", "$\\hat{p}$", "$SE(\\hat{p})$"),
+    paste0("Response category ", seq_len(nrow(sim2_wave2$counts)))
+  )
+)
+tab <- knitr::kable(
+  x = tab, format = "html", digits = 3,
+  row.names = TRUE
+)
+kableExtra::kable_styling(kable_input = tab, full_width = FALSE)
+```
+
+### Test for independence
+To determine if the the two data collection to can be collapsed to one data data collection mechanism, the Pearson's $\chi^{2}$ test for independence was performed with a significance level of `r alpha`, where a p-value less than or equal to the significance level is an indication of dependence (i.e., the under-lining distributions of the *waves* is characteristically different).
+```{r}
+wave2 <- c(
+  rep(x = 1, times = nrow(sim2_wave1$data)),
+  rep(x = 2, times = nrow(sim2_wave2$data))
+)
+responses2 <- c(
+  sim2_wave1$data$responses,
+  sim2_wave2$data$responses
+)
+test2 <- stats::chisq.test(x = wave2, y = responses2, correct = FALSE)
+print(test2)
+if (test2$p.value > alpha) {
+  cat("Conclusion: Collapse to one sample without adjusting response bias. \n")
+} else {
+  cat("Conclusion: Collapse to one sample while adjusting response bias. \n")
+}
+```
+
+### Collapsing the data
+When we collapse the two waves of data we see that we achieve saturation given the threshold for saturation is 0.05.
+```{r}
+tab <- matrix(
+  data = round(c(sim2$counts, sim2$p_hat, sim2$se), digits = 3),
+  nrow = 3, ncol = nrow(sim2$counts), byrow = TRUE,
+  dimnames = list(
+    c("Counts", "$\\hat{p}$", "$SE(\\hat{p})$"),
+    paste0("Response category ", seq_len(nrow(sim2$counts)))
+  )
+)
+tab <- knitr::kable(
+  x = tab, format = "html", digits = 3,
+  row.names = TRUE
+)
+kableExtra::kable_styling(kable_input = tab, full_width = FALSE)
+```
+
+## Simulation setting: 3
+Again, in this simualation setting, we are assuming we need a second collection of data to achieve saturation with a saturation threshold of 0.05. However, in this simulation, the data collection mechanism resulted in response bias. So, the generating probabilities for the first and second wave of data are `r prob1` and `r prob2_rb`, respectively, and we must account for response bias in the calculation of standard errors. As in the second simulation, the total sample size of `r size1 + size2` with the sample sizes of the first and second waves of responses being `r size1` and `r size2`, respectively.
+
+### Data collection wave: 1 (N = `r size1`)
+```{r}
+tab <- matrix(
+  data = round(
+    c(sim3_wave1$counts, sim3_wave1$p_hat, sim3_wave1$se),
+    digits = 3
+  ),
+  nrow = 3, ncol = nrow(sim3_wave1$counts), byrow = TRUE,
+  dimnames = list(
+    c("Counts", "$\\hat{p}$", "$SE(\\hat{p})$"),
+    paste0("Response category ", seq_len(nrow(sim3_wave1$counts)))
+  )
+)
+tab <- knitr::kable(
+  x = tab, format = "html", digits = 3,
+  row.names = TRUE
+)
+kableExtra::kable_styling(kable_input = tab, full_width = FALSE)
+```
+
+### Data collection wave: 2 (N = `r size2`)
+```{r}
+tab <- matrix(
+  data = round(
+    c(sim3_wave2$counts, sim3_wave2$p_hat, sim3_wave2$se),
+    digits = 3
+  ),
+  nrow = 3, ncol = nrow(sim3_wave2$counts), byrow = TRUE,
+  dimnames = list(
+    c("Counts", "$\\hat{p}$", "$SE(\\hat{p})$"),
+    paste0("Response category ", seq_len(nrow(sim3_wave2$counts)))
+  )
+)
+tab <- knitr::kable(
+  x = tab, format = "html", digits = 3,
+  row.names = TRUE
+)
+kableExtra::kable_styling(kable_input = tab, full_width = FALSE)
+```
+
+### Testing for independence
+To determine if the the two data collection to can be collapsed to one data data collection mechanism, the Pearson's $\chi^{2}$ test for independence was performed with a significance level of `r alpha`, where a p-value less than or equal to the significance level is an indication of dependence (i.e., the under-lining distributions of the *waves* is characteristically different).
+```{r}
+wave3 <- c(
+  rep(x = 1, times = nrow(sim3_wave1$data)),
+  rep(x = 3, times = nrow(sim3_wave2$data))
+)
+responses3 <- c(
+  sim3_wave1$data$responses,
+  sim3_wave2$data$responses
+)
+test3 <- stats::chisq.test(x = wave3, y = responses3, correct = FALSE)
+print(test3)
+if (test3$p.value > alpha) {
+  cat("Conclusion: Collapse to one sample without adjusting response bias. \n")
+} else {
+  cat("Conclusion: Collapse to one sample while adjusting response bias. \n")
+}
+```
+
+### Collapsing the data
+After adjusting for response bias in our standard errors, when we collapse the two waves of data we see that we achieve saturation given the threshold for saturation is 0.05.
+```{r}
+tab <- matrix(
+  data = round(c(sim3$counts, sim3$p_hat, sim3$se), digits = 3),
+  nrow = 3, ncol = nrow(sim3$counts), byrow = TRUE,
+  dimnames = list(
+    c("Counts", "$\\hat{p}$", "$SE(\\hat{p})$"),
+    paste0("Response category ", seq_len(nrow(sim3$counts)))
+  )
+)
+tab <- knitr::kable(
+  x = tab, format = "html", digits = 3,
+  row.names = TRUE
+)
+kableExtra::kable_styling(kable_input = tab, full_width = FALSE)
+```
