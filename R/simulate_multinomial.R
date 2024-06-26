@@ -25,7 +25,11 @@ simulate_multinomial <- function(n, size, prob) {
 
   ## Adding names to outputs ####
   row.names(counts) <- paste0("catg", seq(1, nrow(counts), by = 1))
-  colnames(counts) <- paste0("sim", seq(1, ncol(counts), by = 1))
+  if (ncol(counts) > 1) {
+    colnames(counts) <- paste0("responses", seq(1, ncol(counts), by = 1))
+  } else {
+    colnames(counts) <- "responses"
+  }
   row.names(p_hat) <- row.names(counts)
   row.names(se) <- row.names(counts)
   colnames(p_hat) <- colnames(counts)
