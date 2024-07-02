@@ -1,0 +1,209 @@
+---
+title: "Example of saturation point analysis given a mutually exclusive multinomial response"
+date: "`r Sys.Date()`"
+author: "D. Erik Boonstra, MS and Joseph E. Cavanaugh, PhD"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+---
+
+```{r, include = FALSE, results = FALSE, message = FALSE}
+R <- list.files(path = "./R", pattern = "*.R", full.names = TRUE)
+sapply(R, source, .GlobalEnv)
+knitr::opts_chunk$set(
+  echo = FALSE,
+  out.width = "100%",
+  out.height = "100%",
+  fig.align = "center",
+  warning = FALSE,
+  comment = NA
+)
+```
+
+# Purpose
+The purpose of this analysis is to demonstrate the analytical method to identify the saturation point for mutually exclusive multinomial responses. 
+
+# Data
+To demonstrate this methodology the [*Difficult Diagnoses: Pathogen-Agnostic Advanced Molecultar Testing for ID*](https://ein.idsociety.org/surveys/survey/166/) survey conducted by the [Emerging Infectious Network](https://ein.idsociety.org), *EIN*. More specifically, the second question of this survey will be used to demonstrate this methodology.
+
+```{r}
+diff_diag <- readRDS(file = "./data/difficult_diagnoses.rds")
+```
+
+For this survey, `r nrow(diff_diag)` EIN members completed the survey and `r sum(!is.na(diff_diag$q2))` members a gave a response to the second question of the survey, where the frequency distribution of their responses are listed below.
+```{r}
+tab <- data.frame(
+  levels = levels(diff_diag$q2),
+  n = c(stats::ftable(diff_diag$q2))
+)
+ggplot2::ggplot(data = tab, mapping = ggplot2::aes(x = levels, y = n)) +
+  ggplot2::geom_col(fill = "gray") +
+  ggplot2::labs(
+    x = "Responses",
+    y = "Counts"
+  ) +
+  ggplot2::geom_text(mapping = ggplot2::aes(label = n), vjust = -0.4, cex = 4) +
+  ggplot2::theme_light() +
+  ggplot2::theme(text = ggplot2::element_text(size = 12))
+```
+
+The data was collected in *waves* based on non-responses from the initial collection of responses and prior waves of non-responses. The *waves* of responses were collected on the during the following windows.
+```{r}
+tab <- data.frame(
+  waves = c(1, 2, 3),
+  dates = c(
+    "5/03/2023 to 5/15/2023",
+    "5/16/2023 to 5/22/2023",
+    "5/23/2023 to 5/30/2023"
+  )
+)
+tab <- knitr::kable(
+  x = tab, format = "html",
+  col.names = c("Wave", "Dates of collection")
+)
+kableExtra::kable_styling(kable_input = tab, full_width = FALSE)
+```
+
+# Saturation point method
+The saturation method employed is based on the mutually exclusive part of the algorithm outlined in `./resources/algorithm_draft_2024_06_13_eb.pdf` but modified to calculated standard errors using a weighting scheme when necessary. The accompanied simulation document to this document outlines how the standard errors are calculated.
+
+- An updated version of the algorithm will be provided later on.
+
+# Results
+
+```{r}
+sub_dir <- "./outputs/mutually-exclusive-example/"
+load(file = paste0(sub_dir, "mutually_exclusive_example.rda"))
+```
+
+## Wave 1
+We will start off by examining the first wave of responses, and determining what the threshold would need to be to achieve saturation. In this wave, we had `r wave1$size` EIN member provide a response. The sample proportions and the associated standard errors for the responses are below.
+
+```{r}
+tab <- matrix(
+  data = round(c(wave1$counts, wave1$props, wave1$ses), digits = 3),
+  nrow = 3, ncol = length(names(wave1$counts)), byrow = TRUE,
+  dimnames = list(
+    c("Counts", "$\\hat{p}$", "$SE(\\hat{p})$"),
+    names(wave1$counts)
+  )
+)
+tab <- knitr::kable(x = tab, format = "html", row.names = TRUE)
+kableExtra::kable_styling(kable_input = tab, full_width = FALSE)
+```
+
+While examining the standard errors above, we can see if we set the threshold for saturation to any level above 0.03, we will achieve saturation. Thus, we would not need to collect any more data for this question. However, if we set the saturation threshold to 0.02 or lower, more data is needed to achieve saturation.
+
+## Wave 2
+Suppose the saturation is not achieve until all the standard errors is lower than 0.02. Thus, we need to collect a second wave a of data. In the second wave of responses, we had `r wave2$size[2]` EIN provide a reponse. Thus, the total number of responses between the first and second wave is `r wave2$size[3]`. The response counts and sample proportions for the two data collection waves are provided below.
+
+### Counts
+```{r}
+tab <- knitr::kable(x = wave2$counts, format = "html", row.names = TRUE)
+kableExtra::kable_styling(kable_input = tab, full_width = FALSE)
+```
+
+### Proportions
+```{r}
+tab <- knitr::kable(
+  x = wave2$props,
+  format = "html",
+  digits = 3,
+  row.names = TRUE
+)
+kableExtra::kable_styling(kable_input = tab, full_width = FALSE)
+```
+
+### Test for independence
+Before we examine the standard errors for saturation, let's first conduct a Pearson's $\chi^{2}$ test for independence to determine if the data collected in each wave is characteristically different due to the potiential non-response bias.
+```{r}
+wave2$test
+```
+
+Using a significance level of 0.05, we can see the data collection waves do not come from to different under-lining multinomial distributions. Therefore, we can collapse the two waves of data into one collection of data, and calculate the standard errors accordingly.
+
+### Standard errors
+```{r}
+tab <- knitr::kable(
+  x = wave2$ses,
+  format = "html",
+  digits = 3,
+  row.names = TRUE
+)
+kableExtra::kable_styling(kable_input = tab, full_width = FALSE)
+```
+
+Comparing the standard errors to the saturation threshold, 0.02, we see that saturation is not achieved with the first two waves of data.
+
+### Heterogeneity index
+While we have not achieved saturation, we can examine the heterogeneity index to provide a measure of dispersity between the two waves given each response category.
+```{r}
+tab <- matrix(
+  data = round(c(wave2$h_index), digits = 3),
+  nrow = 1, ncol = length(names(wave2$h_index)), byrow = TRUE,
+  dimnames = list(
+    NULL,
+    names(wave2$h_index)
+  )
+)
+tab <- knitr::kable(x = tab, format = "html")
+kableExtra::kable_styling(kable_input = tab, full_width = FALSE)
+```
+
+## Wave 3
+Considering we did not achieve saturation in the first two waves, we need to collect a third wave a of data. In the third wave of responses, we had `r wave3$size[3]` EIN provide a reponse. Thus, the total number of responses between all three waves is `r wave3$size[4]`. The response counts and sample proportions for the three data collection waves are provided below.
+
+### Counts
+```{r}
+tab <- knitr::kable(x = wave3$counts, format = "html", row.names = TRUE)
+kableExtra::kable_styling(kable_input = tab, full_width = FALSE)
+```
+
+### Proportions
+```{r}
+tab <- knitr::kable(
+  x = wave3$props,
+  format = "html",
+  digits = 3,
+  row.names = TRUE
+)
+kableExtra::kable_styling(kable_input = tab, full_width = FALSE)
+```
+
+### Test for independence
+Before we examine the standard errors for saturation, let's first conduct a Pearson's $\chi^{2}$ test for independence to determine if the data collected in each wave is characteristically different due to the potiential non-response bias.
+```{r}
+wave3$test
+```
+
+Using a significance level of 0.05, we can see the data collection waves do not come from to different under-lining multinomial distributions. Therefore, we can collapse the three waves of data into one collection of data, and calculate the standard errors accordingly.
+
+### Standard errors
+```{r}
+tab <- knitr::kable(
+  x = wave3$ses,
+  format = "html",
+  digits = 3,
+  row.names = TRUE
+)
+kableExtra::kable_styling(kable_input = tab, full_width = FALSE)
+```
+
+Comparing the standard errors to the saturation threshold, 0.02, we see that saturation is finally achieved.
+
+### Heterogeneity index
+We can examine the heterogeneity index to provide a measure of dispersity between the three waves given each response category.
+```{r}
+tab <- matrix(
+  data = round(c(wave3$h_index), digits = 3),
+  nrow = 1, ncol = length(names(wave3$h_index)), byrow = TRUE,
+  dimnames = list(
+    NULL,
+    names(wave3$h_index)
+  )
+)
+tab <- knitr::kable(x = tab, format = "html")
+kableExtra::kable_styling(kable_input = tab, full_width = FALSE)
+```
